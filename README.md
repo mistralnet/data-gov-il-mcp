@@ -1,3 +1,6 @@
+
+![data-gov-mcp-server-tambneil](https://github.com/user-attachments/assets/3879d662-21d4-4b07-85eb-5a4a875c3c8d)
+
 # Data.gov.il MCP Server
 
 [![Model Context Protocol](https://img.shields.io/badge/Model%20Context%20Protocol-Compatible-blue)](https://modelcontextprotocol.io/)
