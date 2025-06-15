@@ -39,23 +39,22 @@ A powerful Model Context Protocol (MCP) server that provides intelligent access 
 
 ### Installation
 
-#### Option 1: NPX (Recommended)
+#### Option 1: Direct from GitHub
 ```bash
-npx data-gov-il-mcp
+npm install -g https://github.com/DavidOsherProceed/data-gov-il-mcp.git
 ```
 
-#### Option 2: Global Installation
+#### Option 2: Clone and Run
 ```bash
-npm install -g data-gov-il-mcp
-data-gov-il-mcp
-```
-
-#### Option 3: Local Development
-```bash
-git clone https://github.com/your-username/data-gov-il-mcp.git
+git clone https://github.com/DavidOsherProceed/data-gov-il-mcp.git
 cd data-gov-il-mcp
 npm install
-npm start
+node stdio.js
+```
+
+#### Option 3: NPX from GitHub
+```bash
+npx github:DavidOsherProceed/data-gov-il-mcp
 ```
 
 ### Claude Desktop Configuration
@@ -69,7 +68,7 @@ npm start
   "mcpServers": {
     "data-gov-il": {
       "command": "npx",
-      "args": ["-y", "data-gov-il-mcp"]
+      "args": ["-y", "github:DavidOsherProceed/data-gov-il-mcp"]
     }
   }
 }
