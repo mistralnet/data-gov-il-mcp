@@ -4,6 +4,31 @@ import { spawn } from 'child_process';
 
 const PORT = process.env.PORT || 8080;
 
+// יצירת child process שיישאר חי
+let mcpChild = null;
+
+function startMcpServer() {
+  mcpChild = spawn('node', ['./stdio.js'], {
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+
+  mcpChild.stderr.on('data', (data) => {
+    console.error('MCP stderr:', data.toString());
+  });
+
+  mcpChild.on('close', (code) => {
+    console.log(`MCP child process exited with code ${code}`);
+    // אם התהליך נסגר, התחל אותו מחדש
+    setTimeout(startMcpServer, 1000);
+  });
+
+  mcpChild.on('error', (err) => {
+    console.error('MCP child process error:', err);
+  });
+
+  return mcpChild;
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === '/') {
     let body = '';
@@ -12,42 +37,54 @@ const server = http.createServer(async (req, res) => {
     });
     req.on('end', async () => {
       try {
-        const inputString = body; 
-        const child = spawn('node', ['./stdio.js']); 
+        // אם אין child process, צור אחד
+        if (!mcpChild || mcpChild.killed) {
+          mcpChild = startMcpServer();
+          // תן לו זמן להתחיל
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
 
-        let stdioOutput = '';
-        child.stdout.on('data', (data) => {
-          stdioOutput += data.toString();
-        });
+        const inputString = body;
+        
+        let responseData = '';
+        let errorData = '';
 
-        let stdioError = '';
-        child.stderr.on('data', (data) => {
-          stdioError += data.toString();
-        });
+        // הגדרת מאזינים לתגובה
+        const responsePromise = new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Request timeout'));
+          }, 30000); // 30 שניות timeout
 
-        child.stdin.write(inputString);
-        child.stdin.end();
-
-        await new Promise((resolve, reject) => {
-          child.on('close', (code) => {
-            if (code === 0) {
+          const onData = (data) => {
+            responseData += data.toString();
+            // חפש סוף הודעה (שורה ריקה או JSON עם newline)
+            if (responseData.includes('\n')) {
+              clearTimeout(timeout);
+              mcpChild.stdout.removeListener('data', onData);
               resolve();
-            } else {
-              reject(new Error(`stdio.js exited with code ${code}. Error: ${stdioError || 'Unknown stdio error'}`));
             }
+          };
+
+          mcpChild.stdout.on('data', onData);
+          mcpChild.stderr.on('data', (data) => {
+            errorData += data.toString();
           });
         });
 
+        // שלח את הבקשה
+        mcpChild.stdin.write(inputString + '\n');
+
+        await responsePromise;
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(stdioOutput);
+        res.end(responseData.trim());
 
       } catch (error) {
         console.error('❌ Error processing request:', error);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ 
-            error: 'Internal Server Error', 
-            details: error.message, 
-            stdioError: error.stdioError || 'N/A' 
+          error: 'Internal Server Error', 
+          details: error.message
         }));
       }
     });
@@ -62,6 +99,20 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// התחל את MCP server
+startMcpServer();
+
 server.listen(PORT, () => {
   console.log(`HTTP server listening on port ${PORT}`);
+});
+
+// טיפול נקי בסגירה
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM, shutting down gracefully...');
+  if (mcpChild) {
+    mcpChild.kill();
+  }
+  server.close(() => {
+    process.exit(0);
+  });
 });
