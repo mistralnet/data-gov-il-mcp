@@ -8,7 +8,7 @@
   },
   "type": "module",
   "scripts": {
-    "start": "node stdio.js",
+    "start": "node http-proxy.js",
     "dev": "node --watch stdio.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
